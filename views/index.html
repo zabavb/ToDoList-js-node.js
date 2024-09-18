@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0" />
+		<title>Main page</title>
+		<link
+			href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+			rel="stylesheet" />
+	</head>
+
+	<body>
+		<form name="taskForm">
+			<div class="form-group">
+				<label for="name">Name<span class="text-danger" style="font-size: 20px;">*</span></label>
+				<input
+					type="text"
+					name="name"
+					required
+					maxlength="32"
+					class="form-control" />
+			</div>
+            <div class="form-group">
+				<label for="description">Description</label>
+				<input
+					type="text"
+					name="description"
+					maxlength="128"
+					class="form-control" />
+			</div>
+			<div class="form-group">
+				<label for="dateStart">Date start</label>
+				<input
+					type="date"
+					name="dateStart"
+					class="form-control" />
+			</div>
+            <div class="form-group">
+				<label for="dateEnd">Date end</label>
+				<input
+					type="date"
+					name="dateEnd"
+					class="form-control" />
+			</div>
+			<div class="panel-body">
+				<button
+					type="submit"
+					class="btn btn-primary">
+					Add
+				</button>
+				<button
+					type="submit"
+					class="btn btn-primary">
+					Search
+				</button>
+			</div>
+		</form>
+
+		<table class="table table-condensed table-striped table-bordered">
+			<thead>
+				<tr>
+					<th>Id</th>
+					<th>Name</th>
+					<th>Date start</th>
+					<th>Date end</th>
+					<th>Description</th>
+					<th></th>
+				</tr>
+				<tbody></tbody>
+			</thead>
+		</table>
+
+		<script>
+            let idForUpdate = 0;
+			async function GetTasks() {
+				const response = await fetch("/api/tasks", {
+					method: "GET",
+					headers: { Accept: "application/json" },
+				})
+				if (response.ok == true) {
+					const tasks = await response.json()
+					let rows = document.querySelector("tbody")
+                    tasks.forEach((task) => {
+						rows.append(row(task))
+					})
+				}
+			}
+			async function GetTask(name) {
+				const response = await fetch("/api/tasks/" + name, {
+					method: "GET",
+					headers: { Accept: "application/json",
+						"Content-Type": "application/json",
+					}
+				})
+				if (response.ok == true) {
+					const task = await response.json()
+
+					let rows = document.querySelector("tbody")
+					rows.innerHTML = ""
+					rows.append(row(task))
+
+					ClearFields()
+				}
+			}
+            async function CreateTask(name, dateStart, dateEnd, description) {
+				const response = await fetch("/api/tasks", {
+					method: "POST",
+					headers: {
+						Accept: "application/json",
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						name: name,
+						dateStart: dateStart,
+						dateEnd: dateEnd,
+                        description: description
+					}),
+				})
+				if (response.ok == true) {
+					const task = await response.json()  
+					document.querySelector("tbody").append(row(task))
+
+                    ClearFields()
+				}
+			}
+            async function UpdateTask(id, name, dateStart, dateEnd, description) {
+				const response = await fetch("/api/tasks/" + id, {
+                    method: "PUT",
+                    headers: { Accept: "application/json",
+                    "Content-Type": "application/json" },
+					body: JSON.stringify({
+						name: name,
+						dateStart: dateStart,
+						dateEnd: dateEnd,
+                        description: description
+					}),
+                })
+                if (response.ok == true) {
+                    const task = await response.json()
+                    document.querySelector(`tr[data-rowid='${task._id}']`).childNodes[1].innerText = task.name
+					const dateStart = new Date(task.dateStart).getDay() + "/" + new Date(task.dateStart).getMonth() + "/" + new Date(task.dateStart).getFullYear()
+					document.querySelector(`tr[data-rowid='${task._id}']`).childNodes[2].innerText = dateStart
+					const dateEnd = new Date(task.dateEnd).getDay() + "/" + new Date(task.dateEnd).getMonth() + "/" + new Date(task.dateEnd).getFullYear()
+                    document.querySelector(`tr[data-rowid='${task._id}']`).childNodes[3].innerText = dateEnd
+                    document.querySelector(`tr[data-rowid='${task._id}']`).childNodes[4].innerText = task.description
+                    
+                    idForUpdate = 0
+
+                    ClearFields()
+                }
+            }
+			async function DeleteTask(id) {
+				const response = await fetch("/api/tasks/" + id, {
+					method: "DELETE",
+					headers: { Accept: "application/json" },
+				})
+				if (response.ok == true) {
+					const task = await response.json()
+                    let rows = document
+						.querySelector(`tr[data-rowid='${task._id}']`)
+						.remove()
+				}
+			}
+			function row(task) {
+				const tr = document.createElement("tr")
+				tr.setAttribute("data-rowid", task._id)
+
+				const idTd = document.createElement("td")
+				idTd.append(task._id)
+				tr.append(idTd)
+
+				const nameTd = document.createElement("td")
+				nameTd.append(task.name)
+				tr.append(nameTd)
+
+				const dateStartTd = document.createElement("td")
+				dateStartTd.append(new Date(task.dateStart).getDay() + "/" + new Date(task.dateStart).getMonth() + "/" + new Date(task.dateStart).getFullYear())
+				tr.append(dateStartTd)
+
+				const dateEndTd = document.createElement("td")
+				dateEndTd.append(new Date(task.dateEnd).getDay() + "/" + new Date(task.dateEnd).getMonth() + "/" + new Date(task.dateEnd).getFullYear())
+				tr.append(dateEndTd)
+
+				const descriptionTd = document.createElement("td")
+				descriptionTd.append(task.description)
+				tr.append(descriptionTd)
+                
+				const linksTd = document.createElement("td")
+                
+				const editLink = document.createElement("a")
+				editLink.setAttribute("data-id", task._id)
+				editLink.setAttribute("style", "cursor: pointer; padding: 15px;")
+				editLink.append("Edit")
+
+				editLink.addEventListener("click", (e) => {
+                    e.preventDefault()
+
+                    idForUpdate = task._id
+                    document.getElementsByTagName("form")[0].elements["name"].value = task.name
+					const dateStart = new Date(task.dateStart).getFullYear() + "-" + new Date(task.dateStart).getMonth() + "-" + new Date(task.dateStart).getDay()
+                    document.getElementsByTagName("form")[0].elements["dateStart"].value = dateStart
+					const dateEnd = new Date(task.dateEnd).getFullYear() + "-" + new Date(task.dateEnd).getMonth() + "-" + new Date(task.dateEnd).getDay()
+                    document.getElementsByTagName("form")[0].elements["dateEnd"].value = dateEnd
+                    document.getElementsByTagName("form")[0].elements["description"].value = task.description
+                    document.getElementsByTagName("button")[0].innerText = "Edit"
+                })
+
+                linksTd.append(editLink)
+                
+				const deleteLink = document.createElement("a")
+				deleteLink.setAttribute("data-id", task._id)
+				deleteLink.setAttribute("style", "cursor: pointer; padding: 15px;")
+				deleteLink.append("Delete")
+
+				deleteLink.addEventListener("click", (e) => {
+					e.preventDefault()
+
+					DeleteTask(task._id)
+				})
+
+				linksTd.append(deleteLink)
+
+				tr.appendChild(linksTd)
+                
+				return tr
+			}
+
+            function ClearFields() {
+                document.getElementsByTagName("form")[0].elements["name"].value = ""
+                document.getElementsByTagName("form")[0].elements["dateStart"].value = ""
+                document.getElementsByTagName("form")[0].elements["dateEnd"].value = ""
+                document.getElementsByTagName("form")[0].elements["description"].value = ""
+                document.getElementsByTagName("button")[0].innerText = "Add"
+            }
+
+			document.getElementsByTagName("button")[0].addEventListener("click", (e) => {
+				e.preventDefault()
+                
+                const form = document.forms["taskForm"]
+                const name = form.elements["name"].value
+                const dateStart = form.elements["dateStart"].value
+                const dateEnd = form.elements["dateEnd"].value
+                const description = form.elements["description"].value
+                
+                if (document.getElementsByTagName("button")[0].innerText == "Add")
+                    CreateTask(name, dateStart, dateEnd, description)
+                else 
+                    UpdateTask(idForUpdate, name, dateStart, dateEnd, description)
+			})
+
+			document.getElementsByTagName("button")[1].addEventListener("click", (e) => {
+				e.preventDefault()
+
+                GetTask(document.forms["taskForm"].elements["name"].value)
+			})
+
+			GetTasks()
+		</script>
+	</body>
+</html>
